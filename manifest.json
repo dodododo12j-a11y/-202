@@ -1,15 +1,14 @@
 {
-  "name": "نظام تسجيل غياب ومتابعة مخدومين وخدام - كنيسة أبي سيفين والأمير تادروس",
-  "short_name": "تسجيل الغياب",
-  "description": "نظام تسجيل غياب ومتابعة معدل حضور المخدومين والخدام",
+  "name": "نظام تسجيل غياب ومتابعة - كنيسة أبي سيفين",
+  "short_name": "غياب الكنيسة",
+  "description": "نظام تسجيل غياب ومتابعة مخدومين وخدام كنيسة أبي سيفين والأمير تادروس - طنطا",
   "start_url": "./index.html",
-  "scope": "./",
   "display": "standalone",
-  "orientation": "any",
-  "background_color": "#f5f0e8",
-  "theme_color": "#0d1117",
-  "dir": "rtl",
+  "orientation": "portrait",
+  "background_color": "#0d1117",
+  "theme_color": "#c8392b",
   "lang": "ar",
+  "dir": "rtl",
   "icons": [
     {
       "src": "icon-192.png",
@@ -23,5 +22,7 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "categories": ["education", "utilities"],
+  "screenshots": []
 }

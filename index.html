@@ -2,18 +2,52 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>نظام تسجيل غياب ومتابعة مخدومين وخدام كنيسة أبي سيفين والأمير تادروس-طنطا</title>
 
-<!-- PWA: ربط ملف المانيفست -->
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0d1117">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<!-- PWA Meta Tags -->
+<meta name="theme-color" content="#c8392b">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="غياب الكنيسة">
+<meta name="description" content="نظام تسجيل غياب ومتابعة مخدومين وخدام كنيسة أبي سيفين والأمير تادروس - طنطا">
 
+<!-- PWA Icons -->
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+
+<script>
+  // تسجيل Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(reg => console.log('✅ Service Worker مسجّل:', reg.scope))
+        .catch(err => console.warn('⚠️ فشل تسجيل Service Worker:', err));
+    });
+  }
+
+  // زر تثبيت التطبيق
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    // إظهار زر التثبيت إن وُجد
+    const installBtn = document.getElementById('pwa-install-btn');
+    if (installBtn) {
+      installBtn.style.display = 'inline-flex';
+      installBtn.addEventListener('click', () => {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(choice => {
+          if (choice.outcome === 'accepted') installBtn.style.display = 'none';
+          deferredPrompt = null;
+        });
+      });
+    }
+  });
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
@@ -1616,6 +1650,10 @@
       </div>
     </div>
   </div>
+  <!-- زر تثبيت التطبيق PWA -->
+  <button id="pwa-install-btn" style="display:none;align-items:center;gap:8px;background:#c8392b;color:white;border:none;border-radius:10px;padding:10px 18px;font-family:Cairo,sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+    📲 تثبيت التطبيق
+  </button>
 </div>
 
 <div class="main">
@@ -1767,6 +1805,17 @@
   </div>
 
 
+  <!-- بانر طلب إذن الإشعارات -->
+  <div id="notifPermBanner" style="display:none;background:#fffbeb;border:1px solid #fcd34d;border-top:4px solid #f59e0b;border-radius:12px;padding:14px 20px;margin-bottom:16px;align-items:center;gap:14px;flex-wrap:wrap;">
+    <span style="font-size:26px;">🔔</span>
+    <div style="flex:1;">
+      <div style="font-weight:700;font-size:14px;color:#92400e;">تفعيل إشعارات أعياد الميلاد</div>
+      <div style="font-size:12px;color:#78350f;margin-top:2px;">فعّل الإشعارات لتصلك تنبيهات تلقائية بأعياد ميلاد المخدومين والخدام فور فتح النظام</div>
+    </div>
+    <button onclick="enableNotifications()" style="font-family:Cairo,sans-serif;font-weight:700;font-size:13px;padding:8px 18px;border:none;border-radius:9px;cursor:pointer;background:#f59e0b;color:white;">🔔 تفعيل الإشعارات</button>
+    <button onclick="document.getElementById('notifPermBanner').style.display='none'" style="font-family:Cairo,sans-serif;font-weight:700;font-size:12px;padding:8px 12px;border:none;border-radius:9px;cursor:pointer;background:#eee;color:#555;">✕ إغلاق</button>
+  </div>
+
   <!-- مربع التذكير بأعياد ميلاد المخاديم اليوم -->
   <div class="birthday-alerts-card" id="birthdayAlertsBox">
     <div class="birthday-alerts-icon">🎉🎂</div>
@@ -1831,6 +1880,7 @@
       <button class="btn btn-outline" id="undoBtn" title="تراجع (Ctrl+Z)" style="font-size:12px;padding:6px 12px;" onclick="undo()" disabled>↩️ تراجع</button>
       <button class="btn btn-outline" id="redoBtn" title="إعادة (Ctrl+Y)" style="font-size:12px;padding:6px 12px;" onclick="redo()" disabled>↪️ إعادة</button>
       <button class="btn" style="background:#2980b9;color:white;font-size:12px;padding:6px 12px;" onclick="exportJSON(); updateBackupReminder();">📁 نسخة احتياطية</button>
+      <button class="btn" style="background:#1a7a4a;color:white;font-size:12px;padding:6px 12px;" onclick="exportClassZip()" title="حفظ كل ملفات الفصل (JSON + CSV + تقرير) في ملفات باسم الفصل">📂 حفظ ملفات الفصل</button>
       <button class="btn btn-outline" style="font-size:12px;padding:6px 12px;" onclick="importJSON()">📂 استيراد</button>
     </div>
   </div>
@@ -2477,6 +2527,15 @@
   const UNDO_MAX = 30;
   let _isUndoingRedoing = false;
 
+  // ===== نسخة بدون صور للحفظ في localStorage (توفير المساحة) =====
+  function makeSnapshotNoPhotos() {
+    const snap = makeSnapshot();
+    // إزالة صور المخدومين والخدام وصورة الفصل من نسخة localStorage
+    const studentsNoPhoto = snap.students.map(s => { const c = {...s}; delete c.photo; return c; });
+    const servantsNoPhoto = (snap.servants || []).map(sv => { const c = {...sv}; delete c.photo; return c; });
+    return { ...snap, students: studentsNoPhoto, servants: servantsNoPhoto, classPhoto: null, _photosStripped: true };
+  }
+
   function save() {
     try {
       const prevRaw = localStorage.getItem(LS_KEY);
@@ -2486,10 +2545,13 @@
         redoStack = []; // أي تعديل جديد يلغي إمكانية الإعادة للأمام
         updateUndoRedoUI();
       }
-      localStorage.setItem(LS_KEY, JSON.stringify(makeSnapshot()));
+      // حفظ نسخة بدون صور في localStorage لتفادي امتلاء المساحة
+      localStorage.setItem(LS_KEY, JSON.stringify(makeSnapshotNoPhotos()));
       _lastLsOk = true;
     } catch(e) {
-      _lastLsOk = false; // فشل الحفظ في localStorage (غالباً بسبب امتلاء المساحة بالصور)
+      _lastLsOk = false;
+      // إذا فشل حتى بدون صور، نحاول حذف البيانات القديمة
+      try { localStorage.removeItem(LS_KEY); localStorage.setItem(LS_KEY, JSON.stringify(makeSnapshotNoPhotos())); _lastLsOk = true; } catch(e2) {}
     }
 
     clearTimeout(_saveDebounce);
@@ -2512,7 +2574,7 @@
     try {
       const snap = JSON.parse(prevRaw);
       applySnapshot(snap);
-      localStorage.setItem(LS_KEY, JSON.stringify(snap));
+      try { localStorage.setItem(LS_KEY, JSON.stringify(makeSnapshotNoPhotos())); } catch(e) {}
       renderAll();
       calculatePastoralAnalytics();
       setStatus('↩️ تم التراجع عن آخر تعديل', '#1a7a4a', false);
@@ -2537,7 +2599,7 @@
     try {
       const snap = JSON.parse(nextRaw);
       applySnapshot(snap);
-      localStorage.setItem(LS_KEY, JSON.stringify(snap));
+      try { localStorage.setItem(LS_KEY, JSON.stringify(makeSnapshotNoPhotos())); } catch(e) {}
       renderAll();
       calculatePastoralAnalytics();
       setStatus('↪️ تمت إعادة آخر تعديل', '#1a7a4a', false);
@@ -2575,8 +2637,7 @@
     } else if (_lastLsOk) {
       setStatus('💾 محفوظ محلياً', '#d4a017', false);
     } else {
-      setStatus('⛔ فشل الحفظ! مساحة التخزين ممتلئة — صدّر نسخة احتياطية الآن وقلّل عدد/حجم الصور', '#c8392b', false);
-      alert('⚠️ تنبيه مهم:\nفشل حفظ آخر تعديل لأن مساحة تخزين المتصفح ممتلئة (غالباً بسبب كثرة الصور).\n\nالرجاء: 1) تصدير نسخة احتياطية فوراً من القائمة، 2) حذف بعض الصور غير الضرورية، ثم إعادة المحاولة.');
+      setStatus('⛔ فشل حفظ IndexedDB — يُنصح بتصدير نسخة احتياطية الآن', '#c8392b', false);
     }
 
     document.getElementById('lastSaveTime').textContent = 'آخر حفظ: ' + new Date().toLocaleTimeString('ar-EG');
@@ -2605,17 +2666,41 @@
 
     try { sources.idb = await idbGet(); } catch(e) {}
 
-    let best = null, bestTime = '0';
-    for (const [src, snap] of Object.entries(sources)) {
-      if (snap && snap.savedAt && snap.savedAt > bestTime) {
-        bestTime = snap.savedAt;
-        best = { src, snap };
+    // نفضّل IndexedDB دائماً لأنه يحتوي على الصور الكاملة
+    let best = null;
+    const idbTime = (sources.idb && sources.idb.savedAt) || '0';
+    const lsTime  = (sources.ls  && sources.ls.savedAt)  || '0';
+
+    if (sources.idb && idbTime >= lsTime) {
+      // IDB هو الأحدث أو المساوي — استخدمه مباشرة (يحتوي صور)
+      best = { src: 'idb', snap: sources.idb };
+    } else if (sources.ls) {
+      // localStorage أحدث — لكن قد تكون الصور محذوفة
+      if (sources.idb) {
+        // ندمج: بيانات LS الأحدث + صور IDB
+        const lsSnap  = sources.ls;
+        const idbSnap = sources.idb;
+        const merged  = { ...lsSnap };
+        merged.students = (lsSnap.students || []).map(s => {
+          const idbS = (idbSnap.students || []).find(x => x.id === s.id);
+          return idbS ? { ...s, photo: s.photo || idbS.photo || null } : s;
+        });
+        merged.servants = (lsSnap.servants || []).map(sv => {
+          const idbSv = (idbSnap.servants || []).find(x => x.id === sv.id);
+          return idbSv ? { ...sv, photo: sv.photo || idbSv.photo || null } : sv;
+        });
+        merged.classPhoto = lsSnap.classPhoto || idbSnap.classPhoto || null;
+        best = { src: 'ls+idb', snap: merged };
+      } else {
+        best = { src: 'ls', snap: sources.ls };
       }
+    } else if (sources.idb) {
+      best = { src: 'idb', snap: sources.idb };
     }
 
     if (best) {
       applySnapshot(best.snap);
-      const srcLabel = { idb: '💾 IndexedDB', ls: '📋 ذاكرة المتصفح' };
+      const srcLabel = { idb: '💾 IndexedDB', ls: '📋 ذاكرة المتصفح', 'ls+idb': '💾 مدمج (LS+IDB)' };
       setStatus('✅ تم التحميل من ' + (srcLabel[best.src] || best.src), '#1a7a4a', false);
     } else {
       setStatus('📭 لا توجد بيانات محفوظة', '#888', false);
@@ -2624,15 +2709,163 @@
     _updateDots(!!sources.ls, !!sources.idb);
   }
 
+  // ===== إشعارات أعياد الميلاد عبر المتصفح =====
+  let _birthdayNotifShownToday = false;
+
+  function requestNotificationPermission() {
+    if (!("Notification" in window)) return;
+    const banner = document.getElementById("notifPermBanner");
+    if (Notification.permission === "default") {
+      // أظهر البانر بدل الطلب المباشر
+      if (banner) banner.style.display = "flex";
+    } else if (Notification.permission === "granted") {
+      if (banner) banner.style.display = "none";
+    }
+  }
+
+  function enableNotifications() {
+    if (!("Notification" in window)) { alert("متصفحك لا يدعم الإشعارات"); return; }
+    Notification.requestPermission().then(perm => {
+      const banner = document.getElementById("notifPermBanner");
+      if (perm === "granted") {
+        if (banner) banner.style.display = "none";
+        showToast("✅ تم تفعيل إشعارات أعياد الميلاد!");
+        checkAndNotifyBirthdays();
+      } else {
+        showToast("⚠️ لم يتم منح إذن الإشعارات");
+      }
+    });
+  }
+
+  function sendBirthdayNotification(names, type) {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    const title = type === "servant" ? "🎊 عيد ميلاد خادم اليوم!" : "🎂 عيد ميلاد مخدوم اليوم!";
+    const body  = (type === "servant" ? "عيد ميلاد سعيد للخادم/ة: " : "اليوم يوافق عيد ميلاد: ") + names.join(" ، ");
+    try {
+      const n = new Notification(title, { body, tag: "birthday-" + type });
+      n.onclick = () => { window.focus(); n.close(); };
+    } catch(e) {}
+  }
+
+  function checkAndNotifyBirthdays() {
+    if (_birthdayNotifShownToday) return;
+    const dateStr = (document.getElementById("attendanceDate") && document.getElementById("attendanceDate").value) || new Date().toISOString().split("T")[0];
+    const parts = dateStr.split("-");
+    const cm = parseInt(parts[1], 10);
+    const cd = parseInt(parts[2], 10);
+
+    const studentBdays = (students || []).filter(s => {
+      if (!s.dob) return false;
+      const sp = s.dob.split("-");
+      return parseInt(sp[1],10) === cm && parseInt(sp[2],10) === cd;
+    }).map(s => s.name);
+
+    const servantBdays = (servants || []).filter(sv => {
+      if (!sv.dob) return false;
+      const sp = sv.dob.split("-");
+      return parseInt(sp[1],10) === cm && parseInt(sp[2],10) === cd;
+    }).map(sv => sv.name);
+
+    if (studentBdays.length > 0) sendBirthdayNotification(studentBdays, "student");
+    if (servantBdays.length > 0) sendBirthdayNotification(servantBdays, "servant");
+
+    if (studentBdays.length > 0 || servantBdays.length > 0) {
+      _birthdayNotifShownToday = true;
+    }
+  }
+
+  // ===== تصدير JSON باسم الفصل =====
   function exportJSON() {
     const snap = makeSnapshot();
-    const blob = new Blob([JSON.stringify(snap, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
+    const blob = new Blob([JSON.stringify(snap, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     const className = getClassName();
-    const folderName = 'كشف غياب' + (className ? ' ' + className : '');
-    a.download = folderName + '/backup_' + new Date().toISOString().split('T')[0] + '.json';
+    const dateStr = new Date().toISOString().split("T")[0];
+    const fileName = (className ? className + "_" : "") + "backup_" + dateStr + ".json";
+    a.download = fileName;
     a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // ===== حفظ كل ملفات الفصل في ملف مضغوط باسم الفصل =====
+  async function exportClassZip() {
+    const className = getClassName();
+    if (!className) {
+      alert('⚠️ الرجاء إدخال اسم الفصل أولاً في بطاقة "اسم الفصل / المجموعة"');
+      return;
+    }
+
+    showToast('⏳ جاري إنشاء ملف الفصل...');
+    const dateStr = new Date().toISOString().split('T')[0];
+    const snap = makeSnapshot();
+    const jsonContent = JSON.stringify(snap, null, 2);
+
+    // CSV المخدومين
+    function toCsvRow(arr) {
+      return arr.map(function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }).join(',');
+    }
+    const csvLines = [toCsvRow(['رقم المخدوم','الاسم','تاريخ الميلاد','المدرسة','الفصل','أب الاعتراف','مرات الاعتراف','حضور القداس','هاتف الأب','هاتف الأم','هاتف المخدوم','العنوان','ملاحظات'])];
+    students.forEach(function(s) {
+      csvLines.push(toCsvRow([s.id, s.name, s.dob||'', s.school||'', s.class||'', s.confessor||'',
+        confessions[s.id]||0, massAttendance[s.id]||0, s.phone||'', s.phone2||'', s.ownPhone||'', s.address||'', s.extraNotes||'']));
+    });
+    const csvContent = '\uFEFF' + csvLines.join('\r\n');
+
+    // CSV الخدام
+    const servLines = [toCsvRow(['اسم الخادم','الدور','تاريخ الميلاد','الهاتف الأساسي','الهاتف الاحتياطي','العنوان','ملاحظات'])];
+    servants.forEach(function(sv) {
+      servLines.push(toCsvRow([sv.name, sv.role||'', sv.dob||'', sv.phone||'', sv.phone2||'', sv.address||'', sv.notes||'']));
+    });
+    const servCsvContent = '\uFEFF' + servLines.join('\r\n');
+
+    // تقرير HTML مبسط — نستخدم template literal لتجنب مشاكل علامات الاقتباس
+    const reportDate = new Date().toLocaleDateString('ar-EG', {year:'numeric', month:'long', day:'numeric'});
+    const studRows = students.map(function(s,i) {
+      return '<tr><td>'+(i+1)+'</td><td>'+s.name+'</td><td>'+(s.dob||'—')+'</td><td>'+(s.school||'—')+'</td><td>'+(s.confessor||'—')+'</td><td>'+(confessions[s.id]||0)+'</td></tr>';
+    }).join('');
+    const servRows = servants.map(function(sv,i) {
+      return '<tr><td>'+(i+1)+'</td><td>'+sv.name+'</td><td>'+(sv.role||'—')+'</td><td>'+(sv.dob||'—')+'</td><td>'+(sv.phone||'—')+'</td></tr>';
+    }).join('');
+    const htmlReport = [
+      '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">',
+      '<title>\u062a\u0642\u0631\u064a\u0631 \u0641\u0635\u0644 '+className+'</title>',
+      '<style>body{font-family:Cairo,sans-serif;padding:20px;direction:rtl}',
+      'table{width:100%;border-collapse:collapse;font-size:13px}',
+      'th{background:#0d1117;color:white;padding:8px}',
+      'td{padding:8px;border:1px solid #ddd}h1{color:#c8392b}h2{color:#2980b9;margin-top:30px}',
+      '</style></head><body>',
+      '<h1>\u0641\u0635\u0644: '+className+'</h1>',
+      '<p>\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0627\u0633\u062a\u062e\u0631\u0627\u062c: '+reportDate+'</p>',
+      '<h2>\u0627\u0644\u0645\u062e\u062f\u0648\u0645\u0648\u0646 ('+students.length+')</h2>',
+      '<table><thead><tr><th>#</th><th>\u0627\u0644\u0627\u0633\u0645</th><th>\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0645\u064a\u0644\u0627\u062f</th><th>\u0627\u0644\u0645\u062f\u0631\u0633\u0629</th><th>\u0623\u0628 \u0627\u0644\u0627\u0639\u062a\u0631\u0627\u0641</th><th>\u0627\u0639\u062a\u0631\u0627\u0641\u0627\u062a</th></tr></thead>',
+      '<tbody>'+studRows+'</tbody></table>',
+      '<h2>\u0627\u0644\u062e\u062f\u0627\u0645 ('+servants.length+')</h2>',
+      '<table><thead><tr><th>#</th><th>\u0627\u0644\u0627\u0633\u0645</th><th>\u0627\u0644\u062f\u0648\u0631</th><th>\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0645\u064a\u0644\u0627\u062f</th><th>\u0627\u0644\u0647\u0627\u062a\u0641</th></tr></thead>',
+      '<tbody>'+servRows+'</tbody></table>',
+      '</body></html>'
+    ].join('');
+
+    const folderName = className + '_' + dateStr;
+    const files = [
+      { content: jsonContent,    name: folderName + '_backup.json',   mime: 'application/json' },
+      { content: csvContent,     name: folderName + '_\u0627\u0644\u0645\u062e\u062f\u0648\u0645\u0648\u0646.csv', mime: 'text/csv;charset=utf-8;' },
+      { content: servCsvContent, name: folderName + '_\u0627\u0644\u062e\u062f\u0627\u0645.csv',      mime: 'text/csv;charset=utf-8;' },
+      { content: htmlReport,     name: folderName + '_\u062a\u0642\u0631\u064a\u0631.html',      mime: 'text/html;charset=utf-8;' }
+    ];
+    for (var fi = 0; fi < files.length; fi++) {
+      var f = files[fi];
+      var blob = new Blob([f.content], { type: f.mime });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = f.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+      await new Promise(function(r) { setTimeout(r, 400); });
+    }
+    showToast('\u2705 \u062a\u0645 \u062a\u0635\u062f\u064a\u0631 \u0645\u0644\u0641\u0627\u062a \u0641\u0635\u0644 "' + className + '" \u0628\u0646\u062c\u0627\u062d!');
   }
 
   function importJSON() {
@@ -2934,6 +3167,13 @@
     if (birthdayBoys.length > 0) {
       txt.innerHTML = `اليوم يوافق عيد ميلاد كل من: ( ${birthdayBoys.join(' ، ')} ) كل عام وهم في ملء النعمة والبركة! 🎉🎂🌟`;
       box.style.display = 'flex';
+      // إشعار المتصفح
+      const plainNames = students.filter(st2 => {
+        if (!st2.dob) return false;
+        const sp2 = st2.dob.split('-');
+        return parseInt(sp2[1],10) === currentMonth && parseInt(sp2[2],10) === currentDay;
+      }).map(st2 => st2.name);
+      if (plainNames.length > 0) sendBirthdayNotification(plainNames, 'student');
     } else {
       box.style.display = 'none';
     }
@@ -2964,6 +3204,13 @@
     if (birthdayServants.length > 0) {
       txt.innerHTML = 'عيد ميلاد سعيد للخادم/ة: ( ' + birthdayServants.join(' ، ') + ' ) كل عام وهم في ملء النعمة والبركة! 🎊🎂✨';
       box.style.display = 'flex';
+      // إشعار المتصفح للخدام
+      const plainServantNames = servants.filter(sv2 => {
+        if (!sv2.dob) return false;
+        const sp2 = sv2.dob.split('-');
+        return parseInt(sp2[1],10) === currentMonth && parseInt(sp2[2],10) === currentDay;
+      }).map(sv2 => sv2.name);
+      if (plainServantNames.length > 0) sendBirthdayNotification(plainServantNames, 'servant');
     } else {
       box.style.display = 'none';
     }
@@ -3096,6 +3343,11 @@
       cEl.querySelector('span:last-child').textContent = toCopticDate(now);
     }
     checkChristmasToday();
+    // طلب إذن الإشعارات وإرسال إشعارات أعياد الميلاد
+    setTimeout(() => {
+      requestNotificationPermission();
+      setTimeout(checkAndNotifyBirthdays, 2000);
+    }, 1000);
   });
 
   // ===== التقويم القبطي =====
@@ -6609,15 +6861,6 @@
       document.body.appendChild(t);
       setTimeout(() => t.remove(), 3000);
     };
-  }
-
-  // تسجيل الـ Service Worker لدعم العمل بدون إنترنت (PWA)
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('service-worker.js').catch((err) => {
-        console.warn('فشل تسجيل service worker:', err);
-      });
-    });
   }
 </script>
 </body></html>
